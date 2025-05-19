@@ -1,4 +1,5 @@
 import asyncio
+from typing import Optional
 from quart import Quart, render_template
 from telegram_to_rss.client import TelegramToRssClient
 from telegram_to_rss.config import (
@@ -50,10 +51,13 @@ async def start_rss_generation():
 
     logging.info("start_rss_generation")
 
-    async def update_rss():
+    async def update_rss(inital_delay: Optional[float] = None):
         global rss_task
+        if inital_delay is not None:
+            await asyncio.sleep(inital_delay)
 
         should_reschedule = True
+        reschedule_delay = None
         try:
             logging.info("update_rss -> db")
             await update_feeds_in_db(telegram_poller=telegram_poller)
@@ -66,18 +70,19 @@ async def start_rss_generation():
         except asyncio.CancelledError:
             should_reschedule = False
         except ConnectionError as e:
+            reschedule_delay = 5
             logging.warning(f"update_rss -> connection error, reconnecting telethon: {e}")
             await telegram_poller._client._telethon.connect()
         except Exception as e:
+            reschedule_delay = 2
             logging.error(f"update_rss -> error: {e}")
             logging.warning("update_rss -> rebuilding feeds from scratch")
             await reset_feeds_in_db(telegram_poller=telegram_poller)
-            raise e
         finally:
             if should_reschedule:
                 logging.info("update_rss -> scheduling a new run")
                 loop = asyncio.get_event_loop()
-                rss_task = loop.create_task(update_rss())
+                rss_task = loop.create_task(update_rss(reschedule_delay))
 
     await client.start()
 

@@ -13,7 +13,7 @@ from telegram_to_rss.config import (
     update_interval_seconds,
     db_path,
     loglevel,
-    max_video_size,
+    max_media_size,
 )
 from telegram_to_rss.qr_code import get_qr_code_image
 from telegram_to_rss.db import init_feeds_db, close_feeds_db
@@ -41,7 +41,7 @@ telegram_poller = TelegramPoller(
     message_limit=feed_size_limit,
     new_feed_limit=initial_feed_size,
     static_path=static_path,
-    max_video_size=max_video_size,
+    max_media_size=max_media_size,
 )
 rss_task: asyncio.Task | None = None
 

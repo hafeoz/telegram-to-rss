@@ -11,7 +11,7 @@ class TelegramPoller:
     _message_limit: int
     _new_feed_limit: int
     _static_path: Path
-    _max_video_size: int
+    _max_media_size: int
 
     def __init__(
         self,
@@ -19,13 +19,13 @@ class TelegramPoller:
         message_limit: int,
         new_feed_limit: int,
         static_path: Path,
-        max_video_size: int,
+        max_media_size: int,
     ) -> None:
         self._client = client
         self._message_limit = message_limit
         self._new_feed_limit = new_feed_limit
         self._static_path = static_path
-        self._max_video_size = max_video_size
+        self._max_media_size = max_media_size
 
 
     async def fetch_dialogs(self):
@@ -161,26 +161,15 @@ class TelegramPoller:
                 if dialog_message.photo:
                     await self._download_media(dialog_message, last_processed_message, feed, 'photo')
 
-                if isinstance(dialog_message.media, types.MessageMediaDocument):
-                    document = dialog_message.media.document
-                    mime_type = getattr(document, 'mime_type', None)
-                    if mime_type:
-                        if mime_type.startswith("video/"):
-                            video_size = document.size
-                            if video_size > self._max_video_size:
-                                logging.info(
-                                    f"Video in message {dialog_message.id} is too large ({video_size} bytes). Skipping download."
-                                )
-                                last_processed_message.downloaded_media.append("TOO_LARGE")
-                                continue
-                            await self._download_media(dialog_message, last_processed_message, feed, 'video')
-                        elif mime_type.startswith("image/"):
-                            await self._download_media(dialog_message, last_processed_message, feed, 'image')
-                        else:
-                            logging.debug(
-                                f"Unsupported media type '{mime_type}' in message {dialog_message.id}"
-                            )
-                            last_processed_message.has_unsupported_media = True
+                document = dialog_message.document
+                if document is not None:
+                    mime_type = document.mime_type.split("/")[0]
+                    logging.debug(f"Document mime type: {mime_type}")
+                    if document.size > self._max_media_size:
+                        logging.info(f"Media in message {dialog_message.id} is too large ({document.size} bytes). Skipping download.")
+                        last_processed_message.downloaded_media.append("TOO_LARGE")
+                        continue
+                    await self._download_media(dialog_message, last_processed_message, feed, mime_type)
 
             except Exception as e:
                 logging.error(f"Error processing message {dialog_message.id}: {e}", exc_info=True)

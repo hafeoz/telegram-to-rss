@@ -1,3 +1,4 @@
+from typing import Union
 from telethon import TelegramClient, types, errors, custom
 from telegram_to_rss.consts import TELEGRAM_NOTIFICATIONS_DIALOG_ID
 from telethon.utils import resolve_id
@@ -76,6 +77,15 @@ class TelegramToRssClient:
         ).collect()
         return messages
 
+    async def telethon_dialog_id_to_tg_id_or_username(self, id: int) -> Union[str, int]:
+        entity = await self._telethon.get_entity(id)
+        if (
+            isinstance(entity, (types.User, types.Channel))
+            and entity.username is not None
+        ):
+            return entity.username
+        return resolve_id(id)[0]
+
     @property
     def qr_code_url(self):
         return self._qr_code_url
@@ -83,7 +93,3 @@ class TelegramToRssClient:
     @property
     def user(self):
         return self._user
-
-
-def telethon_dialog_id_to_tg_id(id: int):
-    return resolve_id(id)[0]

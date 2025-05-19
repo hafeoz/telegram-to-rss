@@ -63,7 +63,7 @@ async def start_rss_generation():
             await update_feeds_in_db(telegram_poller=telegram_poller)
 
             logging.info("update_rss -> cache")
-            await update_feeds_cache(feed_render_dir=static_path)
+            await update_feeds_cache(telegram_poller=telegram_poller, feed_render_dir=static_path)
 
             logging.info("update_rss -> sleep")
             await asyncio.sleep(update_interval_seconds)

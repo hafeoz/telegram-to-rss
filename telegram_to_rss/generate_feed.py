@@ -3,9 +3,8 @@ from quart import utils
 from telegram_to_rss.models import Feed, FeedEntry
 from tortoise.query_utils import Prefetch
 from telegram_to_rss.config import base_url
-from telegram_to_rss.poll_telegram import parse_feed_entry_id
+from telegram_to_rss.poll_telegram import TelegramPoller, parse_feed_entry_id
 import re
-from telegram_to_rss.client import telethon_dialog_id_to_tg_id
 import xml.etree.ElementTree as ET
 import logging
 
@@ -17,10 +16,14 @@ def clean_title(raw_html):
     return cleantext
 
 
-def generate_feed(feed_render_dir: Path, feed: Feed):
+async def generate_feed(telegram_poller: TelegramPoller, feed_render_dir: Path, feed: Feed):
     logging.info("generate_feed %s %s", feed.name, feed.id)
 
-    feed_url = "https://t.me/c/{}".format(telethon_dialog_id_to_tg_id(feed.id))
+    feed_id = await telegram_poller._client.telethon_dialog_id_to_tg_id_or_username(feed.id)
+    if isinstance(feed_id, int):
+        feed_url = f"https://t.me/c/{feed_id}"
+    else:
+        feed_url = f"https://t.me/{feed_id}"
 
     rss_root_el = ET.Element("rss", {"version": "2.0"})
 
@@ -37,9 +40,11 @@ def generate_feed(feed_render_dir: Path, feed: Feed):
 
     for feed_entry in feed.entries:
         [feed_id, entry_id] = parse_feed_entry_id(feed_entry.id)
-        feed_entry_url = "https://t.me/c/{}/{}".format(
-            telethon_dialog_id_to_tg_id(feed_id), entry_id
-        )
+        feed_id_ = await telegram_poller._client.telethon_dialog_id_to_tg_id_or_username(feed_id)
+        if isinstance(feed_id_, int):
+            feed_entry_url = f"https://t.me/c/{feed_id_}/{entry_id}"
+        else:
+            feed_entry_url = f"https://t.me/{feed_id_}/{entry_id}"
 
         rss_item_el = ET.SubElement(rss_feed_el, "item")
 
@@ -95,10 +100,10 @@ def generate_feed(feed_render_dir: Path, feed: Feed):
     logging.info("generate_feed -> done %s %s", feed.name, feed.id)
 
 
-async def update_feeds_cache(feed_render_dir: str):
+async def update_feeds_cache(telegram_poller: TelegramPoller, feed_render_dir: str):
     feeds = await Feed.all().prefetch_related(
         Prefetch("entries", queryset=FeedEntry.all().order_by("-date"))
     )
 
     for feed in feeds:
-        await utils.run_sync(generate_feed)(feed_render_dir, feed)
+        await generate_feed(telegram_poller, feed_render_dir, feed)

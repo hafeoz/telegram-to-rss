@@ -65,6 +65,9 @@ async def start_rss_generation():
             await asyncio.sleep(update_interval_seconds)
         except asyncio.CancelledError:
             should_reschedule = False
+        except ConnectionError as e:
+            logging.warning(f"update_rss -> connection error, reconnecting telethon: {e}")
+            await telegram_poller._client._telethon.connect()
         except Exception as e:
             logging.error(f"update_rss -> error: {e}")
             logging.warning("update_rss -> rebuilding feeds from scratch")

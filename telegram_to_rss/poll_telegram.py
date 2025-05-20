@@ -163,7 +163,7 @@ class TelegramPoller:
                 last_processed_message = filtered_dialog_messages[-1]
 
                 if dialog_message.photo:
-                    await self._download_media(dialog_message, dialog_message.photo, last_processed_message, feed, 'photo')
+                    await self._download_media(dialog_message, last_processed_message, feed, 'photo')
 
                 document = dialog_message.document
                 if document is not None:
@@ -173,7 +173,7 @@ class TelegramPoller:
                         logging.info(f"Media in message {dialog_message.id} is too large ({document.size} bytes). Skipping download.")
                         last_processed_message.downloaded_media.append("TOO_LARGE")
                         continue
-                    await self._download_media(dialog_message, document, last_processed_message, feed, mime_type)
+                    await self._download_media(dialog_message, last_processed_message, feed, mime_type)
 
             except Exception as e:
                 logging.error(f"Error processing message {dialog_message.id}: {e}", exc_info=True)
@@ -194,11 +194,12 @@ class TelegramPoller:
             )
         return feed_entries
 
-    async def _download_media(self, dialog_message: Message, media: Union[Document, Photo], last_processed_message, feed, media_type):
+    async def _download_media(self, dialog_message: Message, last_processed_message, feed, media_type):
         try:
-            feed_entry_media_id = "{}-{}".format(
+            feed_entry_media_id = "{}-{}-{}".format(
                 to_feed_entry_id(feed, dialog_message),
                 len(last_processed_message.downloaded_media),
+                dialog_message.file.name
             )
             media_path = self._static_path.joinpath(feed_entry_media_id)
 
@@ -211,16 +212,13 @@ class TelegramPoller:
                     total,
                 )
 
-            if media_type == 'photo':
-                await dialog_message.downloaded_media(media_path, progress_callback=progress_callback)
-            else:
-                with open(media_path, "wb") as out:
-                    await download_file(
-                        dialog_message.client,
-                        media,
-                        out,
-                        progress_callback=progress_callback
-                    )
+            with open(media_path, "wb") as out:
+                await download_file(
+                    dialog_message.client,
+                    dialog_message.file,
+                    out,
+                    progress_callback=progress_callback
+                )
             last_processed_message.downloaded_media.append(Path(media_path).name)
             logging.info(f"Downloaded {media_type} to {media_path}")
         except Exception as e:

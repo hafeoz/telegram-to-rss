@@ -196,10 +196,10 @@ class TelegramPoller:
 
     async def _download_media(self, dialog_message: Message, media: Union[Document, Photo], last_processed_message, feed, media_type):
         try:
-            feed_entry_media_id = "{}-{}-{}".format(
+            feed_entry_media_id = "{}-{}{}".format(
                 to_feed_entry_id(feed, dialog_message),
                 len(last_processed_message.downloaded_media),
-                dialog_message.file.name
+                Path(dialog_message.file.name or "").suffix,
             )
             media_path = self._static_path.joinpath(feed_entry_media_id)
 

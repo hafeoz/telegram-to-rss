@@ -213,7 +213,7 @@ class TelegramPoller:
                 )
 
             if media_type == 'photo':
-                media_path = await dialog_message.downloaded_media(media_path, progress_callback=progress_callback)
+                media_path = await dialog_message.download_media(media_path, progress_callback=progress_callback)
             else:
                 with open(media_path, "wb") as out:
                     await download_file(

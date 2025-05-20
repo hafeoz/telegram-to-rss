@@ -1,3 +1,5 @@
+from telethon.tl.custom import Message
+from telegram_to_rss.FastTelethon import download_file
 from telegram_to_rss.client import TelegramToRssClient, custom, types
 from telegram_to_rss.models import Feed, FeedEntry
 from tortoise.expressions import Q
@@ -190,7 +192,7 @@ class TelegramPoller:
             )
         return feed_entries
 
-    async def _download_media(self, dialog_message, last_processed_message, feed, media_type):
+    async def _download_media(self, dialog_message: Message, last_processed_message, feed, media_type):
         try:
             feed_entry_media_id = "{}-{}".format(
                 to_feed_entry_id(feed, dialog_message),
@@ -207,11 +209,15 @@ class TelegramPoller:
                     total,
                 )
 
-            res_path = await dialog_message.download_media(
-                file=media_path, progress_callback=progress_callback
-            )
-            last_processed_message.downloaded_media.append(Path(res_path).name)
-            logging.debug(f"Downloaded {media_type} to {res_path}")
+            with open(media_path, "wb") as out:
+                await download_file(
+                    dialog_message.client,
+                    dialog_message.document,
+                    out,
+                    progress_callback=progress_callback
+                )
+            last_processed_message.downloaded_media.append(Path(media_path).name)
+            logging.debug(f"Downloaded {media_type} to {media_path}")
         except Exception as e:
             logging.warning(
                 f"Downloading {media_type} failed with {e} for message {dialog_message.id} {dialog_message.date} {dialog_message.text}",

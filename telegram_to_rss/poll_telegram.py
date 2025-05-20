@@ -211,15 +211,18 @@ class TelegramPoller:
                     total,
                 )
 
-            with open(media_path, "wb") as out:
-                await download_file(
-                    dialog_message.client,
-                    media,
-                    out,
-                    progress_callback=progress_callback
-                )
+            if isinstance(media, Photo):
+                await dialog_message.downloaded_media(media_path, progress_callback=progress_callback)
+            else:
+                with open(media_path, "wb") as out:
+                    await download_file(
+                        dialog_message.client,
+                        media,
+                        out,
+                        progress_callback=progress_callback
+                    )
             last_processed_message.downloaded_media.append(Path(media_path).name)
-            logging.debug(f"Downloaded {media_type} to {media_path}")
+            logging.info(f"Downloaded {media_type} to {media_path}")
         except Exception as e:
             logging.warning(
                 f"Downloading {media_type} failed with {e} for message {dialog_message.id} {dialog_message.date} {dialog_message.text}",

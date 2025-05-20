@@ -1,4 +1,6 @@
+from typing import Union
 from telethon.tl.custom import Message
+from telethon.types import Document, Photo
 from telegram_to_rss.FastTelethon import download_file
 from telegram_to_rss.client import TelegramToRssClient, custom, types
 from telegram_to_rss.models import Feed, FeedEntry
@@ -161,7 +163,7 @@ class TelegramPoller:
                 last_processed_message = filtered_dialog_messages[-1]
 
                 if dialog_message.photo:
-                    await self._download_media(dialog_message, last_processed_message, feed, 'photo')
+                    await self._download_media(dialog_message, dialog_message.photo, last_processed_message, feed, 'photo')
 
                 document = dialog_message.document
                 if document is not None:
@@ -171,7 +173,7 @@ class TelegramPoller:
                         logging.info(f"Media in message {dialog_message.id} is too large ({document.size} bytes). Skipping download.")
                         last_processed_message.downloaded_media.append("TOO_LARGE")
                         continue
-                    await self._download_media(dialog_message, last_processed_message, feed, mime_type)
+                    await self._download_media(dialog_message, document, last_processed_message, feed, mime_type)
 
             except Exception as e:
                 logging.error(f"Error processing message {dialog_message.id}: {e}", exc_info=True)
@@ -192,7 +194,7 @@ class TelegramPoller:
             )
         return feed_entries
 
-    async def _download_media(self, dialog_message: Message, last_processed_message, feed, media_type):
+    async def _download_media(self, dialog_message: Message, media: Union[Document, Photo], last_processed_message, feed, media_type):
         try:
             feed_entry_media_id = "{}-{}".format(
                 to_feed_entry_id(feed, dialog_message),
@@ -212,7 +214,7 @@ class TelegramPoller:
             with open(media_path, "wb") as out:
                 await download_file(
                     dialog_message.client,
-                    dialog_message.document,
+                    media,
                     out,
                     progress_callback=progress_callback
                 )

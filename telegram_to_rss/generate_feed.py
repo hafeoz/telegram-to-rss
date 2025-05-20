@@ -72,7 +72,7 @@ async def generate_feed(
         for media_path in feed_entry.media:
             if media_path == "FAIL":
                 media_download_failure += 1
-            elif media_path.starts_with("TOO_LARGE"):
+            elif media_path == "TOO_LARGE":
                 media_too_large += 1
             else:
                 media_url = "{}/static/{}".format(base_url, media_path)

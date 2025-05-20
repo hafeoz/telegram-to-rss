@@ -196,10 +196,9 @@ class TelegramPoller:
 
     async def _download_media(self, dialog_message: Message, media: Union[Document, Photo], last_processed_message, feed, media_type):
         try:
-            feed_entry_media_id = "{}-{}{}".format(
+            feed_entry_media_id = "{}-{}".format(
                 to_feed_entry_id(feed, dialog_message),
                 len(last_processed_message.downloaded_media),
-                Path(dialog_message.file.name or "").suffix,
             )
             media_path = self._static_path.joinpath(feed_entry_media_id)
 
@@ -212,18 +211,9 @@ class TelegramPoller:
                     total,
                 )
 
-            if media_type == 'photo':
-                media_path = await dialog_message.download_media(media_path, progress_callback=progress_callback)
-            else:
-                with open(media_path, "wb") as out:
-                    await download_file(
-                        dialog_message.client,
-                        media,
-                        out,
-                        progress_callback=progress_callback
-                    )
-            last_processed_message.downloaded_media.append(Path(media_path).name)
-            logging.info(f"Downloaded {media_type} to {media_path}")
+            res_path = await dialog_message.download_media(file=media_path, progress_callback=progress_callback)
+            last_processed_message.downloaded_media.append(Path(res_path).name)
+            logging.info(f"Downloaded {media_type} to {res_path}")
         except Exception as e:
             logging.warning(
                 f"Downloading {media_type} failed with {e} for message {dialog_message.id} {dialog_message.date} {dialog_message.text}",
